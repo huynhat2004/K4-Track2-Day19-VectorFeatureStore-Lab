@@ -15,8 +15,10 @@
 
 # %%
 import _setup  # noqa: F401
+import socket
 import statistics
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -30,13 +32,18 @@ import httpx
 
 # %%
 ROOT = Path(_setup.__file__).resolve().parent.parent
+
+with socket.socket() as s:
+    s.bind(("127.0.0.1", 0))
+    PORT = s.getsockname()[1]
+
 proc = subprocess.Popen(
-    ["uvicorn", "app.main:app", "--port", "8000", "--log-level", "warning"],
+    [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(PORT), "--log-level", "warning"],
     cwd=str(ROOT),
 )
 
 # Đợi server up + warm (Searcher.from_corpus loads embeddings + indexes 1000 docs)
-URL = "http://localhost:8000"
+URL = f"http://127.0.0.1:{PORT}"
 for _ in range(60):
     try:
         r = httpx.get(f"{URL}/healthz", timeout=2.0)
@@ -44,6 +51,8 @@ for _ in range(60):
             break
     except httpx.HTTPError:
         pass
+    if proc.poll() is not None:
+        raise RuntimeError(f"API process exited early with code {proc.returncode}")
     time.sleep(1)
 else:
     raise RuntimeError("API didn't become ready within 60s")
@@ -63,7 +72,7 @@ for h in body["hits"][:3]:
     print(f"  {h['doc_id']:>14}  score={h['score']:.4f}  {h['title']}")
 
 # %% [markdown]
-# ## 3. TODO — Latency benchmark (100 queries × 3 modes)
+# ## 3. Latency benchmark (100 queries × 3 modes)
 #
 # Dùng 50 golden queries × 2 reps = 100 calls/mode. Ghi nhận latency từ
 # `body["latency_ms"]` (server-side, đã trừ network) HOẶC từ wall-clock httpx

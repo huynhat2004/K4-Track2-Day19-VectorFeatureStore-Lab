@@ -81,7 +81,7 @@ def search_semantic(query: str, top_k: int = TOP_K) -> list[str]:
 
 
 # %% [markdown]
-# ## 3. TODO — implement Reciprocal Rank Fusion
+# ## 3. Implement Reciprocal Rank Fusion
 #
 # Công thức (deck §3):
 #
@@ -100,8 +100,7 @@ def search_hybrid(query: str, top_k: int = TOP_K, rrf_k: int = RRF_K) -> list[st
     kw_ids = search_keyword(query, depth)
     sem_ids = search_semantic(query, depth)
 
-    # TODO: implement RRF fusion below.
-    # Hint: dict[doc_id, float] cộng 1/(rrf_k + rank) từ mỗi retriever.
+    # RRF fusion: dict[doc_id, float] cộng 1/(rrf_k + rank) từ mỗi retriever.
     # rank starts at 1, not 0.
     rrf: dict[str, float] = {}
     for rank, doc_id in enumerate(kw_ids, start=1):
